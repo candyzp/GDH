@@ -1,5 +1,10 @@
 #pragma once
+
+#ifdef GEODE_IS_DESKTOP
 #include <imgui-cocos.hpp>
+#else
+#include "imgui.h"
+#endif
 
 #ifdef GEODE_IS_MOBILE
 #include "../../core/gui.hpp"
