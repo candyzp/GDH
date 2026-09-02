@@ -1,84 +1,20 @@
-name: iOS Port Bootstrap
+name: iOS Build
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - ios-port
+      - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  ios-port:
+  ios:
     runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: Apply iOS compatibility patch
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import json
-
-          p = Path('mod.json')
-          data = json.loads(p.read_text())
-          data.setdefault('gd', {})['ios'] = '2.2081'
-          p.write_text(json.dumps(data, indent=4) + '\n')
-
-          replacements = {
-              'src/core/replayEngine.cpp': [
-                  ('#ifdef GEODE_IS_ANDROID', '#ifdef GEODE_IS_MOBILE'),
-              ],
-              'src/hacks/bypass/slider_limit.cpp': [
-                  ('#ifdef GEODE_IS_ANDROID', '#ifdef GEODE_IS_MOBILE'),
-              ],
-              'src/hacks/cosmetic/show_touches.cpp': [
-                  ('#if defined(GEODE_IS_ANDROID) || defined(GEODE_IS_MACOS)', '#if defined(GEODE_IS_MOBILE) || defined(GEODE_IS_MACOS)'),
-              ],
-              'src/hacks/creator/zoom_bypass.cpp': [
-                  ('#elif defined(GEODE_IS_ANDROID) || defined(GEODE_IS_MACOS)', '#elif defined(GEODE_IS_MOBILE) || defined(GEODE_IS_MACOS)'),
-              ],
-              'src/interface/cocos/windows/core.cpp': [
-                  ('#if defined(GEODE_IS_WINDOWS) || defined(GEODE_IS_ANDROID64)', '#if defined(GEODE_IS_WINDOWS) || defined(GEODE_IS_ANDROID64) || defined(GEODE_IS_IOS)'),
-              ],
-              'src/interface/cocos/windows/search.cpp': [
-                  ('#if defined(GEODE_IS_WINDOWS) || defined(GEODE_IS_ANDROID64)', '#if defined(GEODE_IS_WINDOWS) || defined(GEODE_IS_ANDROID64) || defined(GEODE_IS_IOS)'),
-              ],
-          }
-
-          for filename, pairs in replacements.items():
-              path = Path(filename)
-              text = path.read_text()
-              for old, new in pairs:
-                  text = text.replace(old, new)
-              path.write_text(text)
-
-          # widgetH.cpp calls GDH::MaterialLayer on every mobile target, so iOS
-          # needs the declaration too. Put the include in the small header rather
-          # than changing the large implementation file.
-          p = Path('src/interface/imgui/widgetH.hpp')
-          text = p.read_text()
-          include = '#ifdef GEODE_IS_MOBILE\n#include "../../core/gui.hpp"\n#endif\n\n'
-          if include not in text:
-              text = text.replace('#include <imgui-cocos.hpp>\n\n', '#include <imgui-cocos.hpp>\n\n' + include)
-          p.write_text(text)
-          PY
-
-      - name: Commit port changes
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add mod.json src
-          if ! git diff --cached --quiet; then
-            git commit -m "Add initial iOS support [skip ci]"
-            git push origin HEAD:ios-port
-          fi
 
       - name: Build iOS
         id: build
