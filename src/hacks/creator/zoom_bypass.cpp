@@ -17,7 +17,7 @@ class $modify(ZoomBypassEditorUI, EditorUI) {
         hack.addHookPtr(self.getHook("EditorUI::zoomIn").unwrap());
         hack.addHookPtr(self.getHook("EditorUI::zoomOut").unwrap());
         hack.addHookPtr(self.getHook("EditorUI::scrollWheel").unwrap());
-        #elif defined(GEODE_IS_ANDROID) || defined(GEODE_IS_MACOS) 
+        #elif defined(GEODE_IS_MOBILE) || defined(GEODE_IS_MACOS) 
         (void) self.setHookPriority("EditorUI::zoomGameLayer", geode::Priority::Early); 
         hack.addHookPtr(self.getHook("EditorUI::zoomGameLayer").unwrap());
         #endif
@@ -56,7 +56,7 @@ class $modify(ZoomBypassEditorUI, EditorUI) {
         }
     }
 
-    #elif defined(GEODE_IS_ANDROID) || defined(GEODE_IS_MACOS)
+    #elif defined(GEODE_IS_MOBILE) || defined(GEODE_IS_MACOS)
 
     void zoomGameLayer(bool zoomingIn) {
         zoomBypass(zoomingIn);

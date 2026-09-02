@@ -51,7 +51,7 @@ namespace {
                 matchCount++;
             }
 
-            #if defined(GEODE_IS_WINDOWS) || defined(GEODE_IS_ANDROID64)
+            #if defined(GEODE_IS_WINDOWS) || defined(GEODE_IS_ANDROID64) || defined(GEODE_IS_IOS)
             if (containsIgnoreCase("lock delta", searchQuery) || containsIgnoreCase("lockdt", searchQuery) || containsIgnoreCase("delta", searchQuery)) {
                 tab->addConfigFloatInput("Lock Delta Value", "invisible.lock_delta::value", 240.f, 1.f, FLT_MAX, [&config](float value) {
                     if (config.get<bool>("invisible.lock_delta::sync_tps", true)) {

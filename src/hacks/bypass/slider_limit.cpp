@@ -34,7 +34,7 @@ $execute {
 }
 #endif
 
-#ifdef GEODE_IS_ANDROID
+#ifdef GEODE_IS_MOBILE
 class $modify(SliderLimitSliderTouchLogic, SliderTouchLogic) {
     static void onModify(auto& self) {
         auto& gui = GDH::Gui::get();

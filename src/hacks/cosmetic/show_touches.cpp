@@ -96,7 +96,7 @@ class $modify(ShowTouchesCCEGLView, cocos2d::CCEGLView) {
 };
 #endif
 
-#if defined(GEODE_IS_ANDROID) || defined(GEODE_IS_MACOS)
+#if defined(GEODE_IS_MOBILE) || defined(GEODE_IS_MACOS)
 class $modify(ShowTouchesCCDirector, cocos2d::CCDirector) {
     static void onModify(auto& self) {
         auto& gui = GDH::Gui::get();

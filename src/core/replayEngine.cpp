@@ -152,7 +152,7 @@ void ReplayEngine::handle_commands(GJBaseGameLayer* self) {
             isPlayer1 = !isPlayer1;
         }
 
-        #ifdef GEODE_IS_ANDROID
+        #ifdef GEODE_IS_MOBILE
         self->m_allowedButtons.clear();
         #endif
 

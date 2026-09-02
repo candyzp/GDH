@@ -1,6 +1,10 @@
 #pragma once
 #include <imgui-cocos.hpp>
 
+#ifdef GEODE_IS_MOBILE
+#include "../../core/gui.hpp"
+#endif
+
 namespace ImGuiH {
     enum Color {
         Button_Background,
