@@ -34,6 +34,10 @@ add_subdirectory(libs/imgui)
 # desktop-style input/render hooks, and its CCKeyboardDispatcher hooks are not
 # hookable on iOS because those constructor/destructor bindings are inline.
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "iOS" OR IOS)
+    # Some shared hack files still include <imgui-cocos.hpp> just to get ImGui
+    # declarations. Point those includes at a tiny iOS-only compatibility shim
+    # without exposing gd-imgui-cocos' unsupported runtime hooks on iOS.
+    target_include_directories(${PROJECT_NAME} PRIVATE libs/ios-shims)
     target_link_libraries(${PROJECT_NAME} imgui)
 else()
     CPMAddPackage("gh:prevter/gd-imgui-cocos#6383c75")
