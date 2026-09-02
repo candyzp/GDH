@@ -1,6 +1,5 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/CCCircleWave.hpp>
-#include <imgui-cocos.hpp>
 #include "../../core/gui.hpp"
 
 GUI_HACK_CREATE("Cosmetic", "No Circles", "Removes all circles effects", false);

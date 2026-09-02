@@ -2,7 +2,6 @@
 #include "../../core/gui.hpp"
 #include "../../core/config.hpp"
 #include "../../interface/imgui/widget_helper.hpp"
-#include <imgui-cocos.hpp>
 #include <Geode/modify/GJBaseGameLayer.hpp>
 #include "../../interface/cocos/hack_settings_popup.hpp"
 

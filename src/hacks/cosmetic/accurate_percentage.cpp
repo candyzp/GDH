@@ -5,7 +5,6 @@
 #include "../../core/utils.hpp"
 #include "../../interface/imgui/widget_helper.hpp"
 #include "../../interface/cocos/hack_settings_popup.hpp"
-#include <imgui-cocos.hpp>
 
 GUI_HACK_CREATE("Cosmetic", "Accurate Percentage", "Shows decimals in level progress", false);
 
