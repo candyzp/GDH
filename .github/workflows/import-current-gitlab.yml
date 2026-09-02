@@ -1,8 +1,7 @@
 name: Import current GDH from GitLab
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -26,7 +25,7 @@ jobs:
           mkdir -p /tmp/gdh-src
           unzip -q /tmp/GDH-main.zip -d /tmp/gdh-src
 
-      - name: Replace old tree with current GitLab source
+      - name: Replace repository with current GitLab source
         run: |
           set -euo pipefail
           find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
