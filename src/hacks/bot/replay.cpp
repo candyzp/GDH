@@ -23,6 +23,17 @@ static int expectedTicks = 0;
 static float expectedTicks = 0;
 #endif
 
+#ifdef GEODE_IS_IOS
+static float expectedTicks = 1.f;
+static float* expectedTicksPtr = &expectedTicks;
+static constexpr uintptr_t iosTPSPatchOffset = 0x1FE724;
+static constexpr uintptr_t iosPatchlessExpectedStorage = 0x8B2000;
+
+static float& getExpectedTicks() {
+    return *expectedTicksPtr;
+}
+#endif
+
 static uintptr_t offset = 0;
 static uintptr_t deltaOffset = 0;
 
@@ -38,6 +49,29 @@ $execute {
 }
 #endif
 
+#ifdef GEODE_IS_IOS
+$execute {
+    static_assert(GEODE_COMP_GD_VERSION == 22081, "GDH iOS TPS support is pinned to Geometry Dash 2.2081");
+
+    if (geode::Loader::get()->isPatchless()) {
+        expectedTicksPtr = reinterpret_cast<float*>(geode::base::get() + iosPatchlessExpectedStorage);
+        getExpectedTicks() = 1.f;
+
+        // adrp x9, page(base + 0x8B2000); ldr s0, [x9]; then NOP the
+        // rest of the original 40-byte expected-tick calculation.
+        GEODE_MOD_STATIC_PATCH(0x1FE724, {
+            0xA9, 0x35, 0x00, 0x90, 0x20, 0x01, 0x40, 0xBD,
+            0x1F, 0x20, 0x03, 0xD5, 0x1F, 0x20, 0x03, 0xD5,
+            0x1F, 0x20, 0x03, 0xD5, 0x1F, 0x20, 0x03, 0xD5,
+            0x1F, 0x20, 0x03, 0xD5, 0x1F, 0x20, 0x03, 0xD5,
+            0x1F, 0x20, 0x03, 0xD5, 0x1F, 0x20, 0x03, 0xD5
+        });
+    } else {
+        offset = geode::base::get() + iosTPSPatchOffset;
+    }
+}
+#endif
+
 #ifdef GEODE_IS_INTEL_MAC
 $execute {
     offset = GDH::Utils::PatternScan(geode::base::get(), 0x1600000, "0F 28 ? F3 0F 5D 83 ? ? ? ? F3 0F ? ? F2 0F 10");
@@ -45,13 +79,15 @@ $execute {
 }
 #endif
 
-#if defined(GEODE_IS_WINDOWS) || defined(GEODE_IS_ANDROID64) || defined(GEODE_IS_INTEL_MAC)
+#if defined(GEODE_IS_WINDOWS) || defined(GEODE_IS_ANDROID64) || defined(GEODE_IS_INTEL_MAC) || defined(GEODE_IS_IOS)
 class $modify(ReplayCCScheduler, cocos2d::CCScheduler) {
     static void onModify(auto& self) {
         auto& gui = GDH::Gui::get();
         auto& hack = gui.getWindow("Invisible").findHackByName("TPS");   
         hack.setCheating(true);     
+        #ifndef GEODE_IS_IOS
         hack.setEarlyInit(false);
+        #endif
 
         auto &config = Config::get();
         float value = config.get<float>("invisible.tps::value", 240.f); 
@@ -61,6 +97,11 @@ class $modify(ReplayCCScheduler, cocos2d::CCScheduler) {
             #if defined(GEODE_IS_WINDOWS) || defined(GEODE_IS_ANDROID64) || defined(GEODE_IS_INTEL_MAC)
             if (offset == 0) {
                 geode::log::error("Couldn't find the offset for the TPS bypass");
+                return;
+            }
+            #elif defined(GEODE_IS_IOS)
+            if (!geode::Loader::get()->isPatchless() && offset == 0) {
+                geode::log::error("Couldn't find the iOS TPS patch address");
                 return;
             }
             #endif
@@ -115,6 +156,38 @@ class $modify(ReplayCCScheduler, cocos2d::CCScheduler) {
             push_u32(0x14000004);
             #endif
 
+            #ifdef GEODE_IS_IOS
+            std::vector<uint8_t> patchBytes;
+
+            if (!geode::Loader::get()->isPatchless()) {
+                auto push_u32 = [&patchBytes](uint32_t insn) {
+                    patchBytes.push_back(insn & 0xFF);
+                    patchBytes.push_back((insn >> 8) & 0xFF);
+                    patchBytes.push_back((insn >> 16) & 0xFF);
+                    patchBytes.push_back((insn >> 24) & 0xFF);
+                };
+
+                uint64_t addr = reinterpret_cast<uint64_t>(&expectedTicks);
+                uint16_t u0 = (addr >> 0) & 0xFFFF;
+                uint16_t u1 = (addr >> 16) & 0xFFFF;
+                uint16_t u2 = (addr >> 32) & 0xFFFF;
+                uint16_t u3 = (addr >> 48) & 0xFFFF;
+
+                // mov x9, &expectedTicks
+                push_u32(0xD2800009 | (static_cast<uint32_t>(u0) << 5));
+                push_u32(0xF2A00009 | (static_cast<uint32_t>(u1) << 5));
+                push_u32(0xF2C00009 | (static_cast<uint32_t>(u2) << 5));
+                push_u32(0xF2E00009 | (static_cast<uint32_t>(u3) << 5));
+
+                // ldr s0, [x9]
+                push_u32(0xBD400120);
+
+                // Replace the full 40-byte expected-tick block.
+                while (patchBytes.size() < 40)
+                    push_u32(0xD503201F);
+            }
+            #endif
+
             #ifdef GEODE_IS_INTEL_MAC
             auto expectedTicksAddr = reinterpret_cast<uintptr_t>(&expectedTicks);
             std::vector<uint8_t> patchBytes;
@@ -153,6 +226,13 @@ class $modify(ReplayCCScheduler, cocos2d::CCScheduler) {
             if (patch) {
                 (void)patch->toggle(enabled);
             }
+            #elif defined(GEODE_IS_IOS)
+            if (!geode::Loader::get()->isPatchless()) {
+                static auto result = geode::Mod::get()->patch(reinterpret_cast<void*>(offset), patchBytes);
+                static auto patch = result.isErr() ? nullptr : result.unwrap();
+                if (patch)
+                    (void)patch->toggle(enabled);
+            }
             #endif
 
             #ifdef GEODE_IS_INTEL_MAC
@@ -187,6 +267,25 @@ class $modify(ReplayCCScheduler, cocos2d::CCScheduler) {
             }
             #endif
         });
+    }
+};
+#endif
+
+#ifdef GEODE_IS_IOS
+class $modify(ReplayIOSExpectedTicks, GJBaseGameLayer) {
+    void update(float dt) {
+        auto& gui = GDH::Gui::get();
+        auto& tpsHack = gui.getWindow("Invisible").findHackByName("TPS");
+
+        // Patchless iOS keeps the static ARM64 patch installed at all times.
+        // When TPS bypass is off, feed it the stock 240-TPS tick count so the
+        // game behaves normally instead of reusing a stale custom value.
+        if (geode::Loader::get()->isPatchless() && !tpsHack.getEnabled()) {
+            float timeWarp = std::max(0.0001f, std::min(m_gameState.m_timeWarp, 1.f));
+            getExpectedTicks() = std::max(1.f, std::round(dt * 240.f / timeWarp));
+        }
+
+        GJBaseGameLayer::update(dt);
     }
 };
 #endif
@@ -250,13 +349,17 @@ class $modify(ReplayGJBaseGameLayer, GJBaseGameLayer) {
         auto new_dt = steps * timestep;
         m_extraDelta = total_dt - new_dt;
 
-        #if defined(GEODE_IS_WINDOWS) || defined(GEODE_IS_ANDROID64)
+        #if defined(GEODE_IS_WINDOWS) || defined(GEODE_IS_ANDROID64) || defined(GEODE_IS_IOS)
         if (new_dt > 0.0) {
             // float v6 = new_dt * 60.f;
             // expectedTicks = std::max(1.f, std::round(v6 / std::min(m_gameState.m_timeWarp, 1.f) * 4.f));
 
             float v6 = new_dt * tps;
+            #ifdef GEODE_IS_IOS
+            getExpectedTicks() = std::max(1.f, std::round(v6 / std::min(m_gameState.m_timeWarp, 1.f)));
+            #else
             expectedTicks = std::max(1.f, std::round(v6 / std::min(m_gameState.m_timeWarp, 1.f)));
+            #endif
         }
         #endif
 
