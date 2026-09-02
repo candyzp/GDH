@@ -29,14 +29,21 @@ target_include_directories(${PROJECT_NAME} PRIVATE libs libs/imgui)
 
 set(HAS_IMGUI ON)
 add_subdirectory(libs/imgui)
-CPMAddPackage("gh:prevter/gd-imgui-cocos#6383c75")
+
+# GDH uses its native Cocos mobile interface on iOS. gd-imgui-cocos injects
+# desktop-style input/render hooks, and its CCKeyboardDispatcher hooks are not
+# hookable on iOS because those constructor/destructor bindings are inline.
+if ("${CMAKE_SYSTEM_NAME}" STREQUAL "iOS" OR IOS)
+    target_link_libraries(${PROJECT_NAME} imgui)
+else()
+    CPMAddPackage("gh:prevter/gd-imgui-cocos#6383c75")
+    target_link_libraries(${PROJECT_NAME} imgui-cocos imgui)
+endif()
 
 if (WIN32)
     add_subdirectory(libs/discord-rpc)
     target_link_libraries(${PROJECT_NAME} discord-rpc)
 endif()
-
-target_link_libraries(${PROJECT_NAME} imgui-cocos imgui)
 
 if (ANDROID AND ANDROID_ABI STREQUAL "arm64-v8a") 
     target_link_options(${PROJECT_NAME} PRIVATE "-Wl,-Bsymbolic")
