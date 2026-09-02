@@ -4,7 +4,7 @@
 #include "../../core/keybinds.hpp"
 #include "widgetH.hpp"
 #include <fmt/format.h>
-#include <imgui-cocos.hpp>
+#include "imgui.h"
 
 bool ImGuiWidgetConfig::HackCheckbox(const char* label, const std::string& config_key, bool default_value = false) {
     auto& config = Config::get();
