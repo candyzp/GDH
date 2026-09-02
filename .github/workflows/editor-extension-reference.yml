@@ -1,0 +1,33 @@
+name: Editor Extension Reference
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: macos-latest
+    steps:
+      - name: Download Grand Editor Extension 1.0.4
+        run: |
+          curl -fL "https://api.geode-sdk.org/v1/mods/raydeeux.grandeditorextension/versions/1.0.4/download" -o /tmp/grand-editor-extension.geode
+          mkdir -p /tmp/grand-editor-extension
+          unzip -q /tmp/grand-editor-extension.geode -d /tmp/grand-editor-extension
+          echo "=== PACKAGE FILES ==="
+          find /tmp/grand-editor-extension -maxdepth 2 -type f -print
+          echo "=== MOD.JSON ==="
+          cat /tmp/grand-editor-extension/mod.json || true
+          echo "=== IOS DYLIB ==="
+          find /tmp/grand-editor-extension -type f -name '*.ios.dylib' -exec file {} \;
+          echo "=== PATCH-RELATED STRINGS ==="
+          find /tmp/grand-editor-extension -type f -name '*.ios.dylib' -exec strings -a {} \; | grep -Ei 'patch|editor|extension|geode|static' | head -400 || true
+
+      - name: Upload reference package
+        uses: actions/upload-artifact@v7
+        with:
+          name: grand-editor-extension-reference
+          path: /tmp/grand-editor-extension.geode
