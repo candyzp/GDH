@@ -1,0 +1,42 @@
+name: Import current GDH from GitLab
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out GitHub fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download current GitLab source
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 \
+            https://gitlab.com/tobyadd/GDH/-/archive/main/GDH-main.zip \
+            -o /tmp/GDH-main.zip
+          rm -rf /tmp/gdh-src
+          mkdir -p /tmp/gdh-src
+          unzip -q /tmp/GDH-main.zip -d /tmp/gdh-src
+
+      - name: Replace old tree with current GitLab source
+        run: |
+          set -euo pipefail
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a /tmp/gdh-src/GDH-main/. .
+
+      - name: Commit imported source
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Import current GDH source from GitLab"
+          git push origin HEAD:main
